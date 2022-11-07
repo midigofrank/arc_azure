@@ -90,12 +90,12 @@ defmodule Arc.Storage.Azure do
   """
   def get(_definition, _version, {file, nil}) do
     server_object = parse_objectname_from_url(file.file_name)
-    ExAzure.request(:get_blob, [container(), server_object])
+    ExAzure.request!(:get_blob, [container(), server_object])
   end
 
   def get(definition, version, {file, scope}) do
     server_object = build_path(definition, version, {file, scope})
-    ExAzure.request(:get_blob, [container(), server_object])
+    ExAzure.request!(:get_blob, [container(), server_object])
   end
 
   def default_tempurl_ttl() do
