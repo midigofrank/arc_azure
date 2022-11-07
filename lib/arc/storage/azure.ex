@@ -39,18 +39,19 @@ defmodule Arc.Storage.Azure do
   """
   def url(definition, version, file_and_scope, options \\ []) do
     temp_url_expires_after = Keyword.get(options, :temp_url_expires_after, default_tempurl_ttl())
-    temp_url_filename = Keyword.get(options, :temp_url_filename, :false)
-    temp_url_inline = Keyword.get(options, :temp_url_inline, :true)
+    temp_url_filename = Keyword.get(options, :temp_url_filename, false)
+    temp_url_inline = Keyword.get(options, :temp_url_inline, true)
     temp_url_method = Keyword.get(options, :temp_url_method, "GET")
+
     options =
-    Keyword.delete(options, :signed)
-    |> Keyword.merge([
-      temp_url_expires_after: temp_url_expires_after,
-      temp_url_filename: temp_url_filename,
-      temp_url_inline: temp_url_inline,
-      temp_url_method: temp_url_method
-      ]
-    )
+      Keyword.delete(options, :signed)
+      |> Keyword.merge(
+        temp_url_expires_after: temp_url_expires_after,
+        temp_url_filename: temp_url_filename,
+        temp_url_inline: temp_url_inline,
+        temp_url_method: temp_url_method
+      )
+
     build_url(definition, version, file_and_scope, options)
   end
 
@@ -65,19 +66,40 @@ defmodule Arc.Storage.Azure do
       :ok
 
   """
-  def delete(_definition, _version, {file, :nil}) do
+  def delete(_definition, _version, {file, nil}) do
     server_object = parse_objectname_from_url(file.file_name)
     ExAzure.request!(:delete_blob, [container(), server_object])
     :ok
   end
+
   def delete(definition, version, {file, scope}) do
     server_object = build_path(definition, version, {file, scope})
     ExAzure.request!(:delete_blob, [container(), server_object])
     :ok
   end
 
+  @doc """
+  Gets the object from the server
+
+
+  ## Examples
+
+      iex> Arc.Storage.Azure.get(YourApp.Uploaders.Image, :thumbnail, {%{file_name: "Sample.png"}, "4958"})
+      {:ok, <<>>}
+
+  """
+  def get(_definition, _version, {file, nil}) do
+    server_object = parse_objectname_from_url(file.file_name)
+    ExAzure.request(:get_blob, [container(), server_object])
+  end
+
+  def get(definition, version, {file, scope}) do
+    server_object = build_path(definition, version, {file, scope})
+    ExAzure.request(:get_blob, [container(), server_object])
+  end
+
   def default_tempurl_ttl() do
-    Application.get_env(:arc, :default_tempurl_ttl, (30 * 24 * 60 * 60))
+    Application.get_env(:arc, :default_tempurl_ttl, 30 * 24 * 60 * 60)
   end
 
   #
@@ -121,5 +143,4 @@ defmodule Arc.Storage.Azure do
 
   defp ensure_keyword_list(list) when is_list(list), do: list
   defp ensure_keyword_list(map) when is_map(map), do: Map.to_list(map)
-
 end
